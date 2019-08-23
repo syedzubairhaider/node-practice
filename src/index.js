@@ -6,7 +6,7 @@ import { ApolloServer } from "apollo-server-express";
 
 import schema from "./schema";
 import resolvers from "./resolvers";
-import models from "./models";
+import models, { sequelize } from "./models";
 
 const app = express();
 
@@ -14,14 +14,74 @@ app.use(cors());
 const server = new ApolloServer({
   typeDefs: schema,
   resolvers,
-  context: {
+
+  formatError: error => {
+    // remove the internal sequelize error message
+    // leave only the important validation error
+    const message = error.message
+      .replace("SequelizeValidationError: ", "")
+      .replace("Validation error: ", "");
+
+    return {
+      ...error,
+      message
+    };
+  },
+  context: async () => ({
     models,
-    me: models.users[1]
-  }
+    me: await models.User.findByLogin("rwieruch")
+  })
 });
 
 server.applyMiddleware({ app, path: "/graphql" });
 
-app.listen({ port: process.env.PORT }, () => {
-  console.log(`Apollo Server on http://localhost:${process.env.PORT}/graphql`);
+const eraseDatabaseOnSync = true;
+
+sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
+  if (eraseDatabaseOnSync) {
+    createUsersWithMessages();
+  }
+
+  app.listen({ port: process.env.PORT }, () => {
+    console.log(
+      `Apollo Server on http://localhost:${process.env.PORT}/graphql`
+    );
+  });
 });
+
+const createUsersWithMessages = async () => {
+  await models.User.create(
+    {
+      username: "rwieruch",
+      email: "hello@robin.com",
+      password: "rwieruch",
+      messages: [
+        {
+          text: "Published the Road to learn React"
+        }
+      ]
+    },
+    {
+      include: [models.Message]
+    }
+  );
+
+  await models.User.create(
+    {
+      username: "ddavids",
+      email: "hello@david.com",
+      password: "ddavids",
+      messages: [
+        {
+          text: "Happy to release ..."
+        },
+        {
+          text: "Published a complete ..."
+        }
+      ]
+    },
+    {
+      include: [models.Message]
+    }
+  );
+};

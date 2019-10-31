@@ -27,6 +27,8 @@ const getMe = async req => {
 };
 
 const server = new ApolloServer({
+  introspection: true,
+  playground: true,
   typeDefs: schema,
   resolvers,
 
@@ -45,6 +47,7 @@ const server = new ApolloServer({
 
   context: async ({ req }) => {
     const me = await getMe(req);
+
     return {
       models,
       me,
@@ -63,15 +66,16 @@ server.applyMiddleware({ app, path: "/graphql" });
 
 const eraseDatabaseOnSync = false;
 
+const isProduction = !!process.env.DATABASE_URL;
+const port = process.env.PORT || 8000;
+
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
     createUsersWithMessages();
   }
 
-  app.listen({ port: process.env.PORT }, () => {
-    console.log(
-      `Apollo Server on http://localhost:${process.env.PORT}/graphql`
-    );
+  app.listen({ port }, () => {
+    console.log(`Apollo Server on http://localhost:${port}/graphql`);
   });
 });
 

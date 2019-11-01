@@ -16,7 +16,8 @@ const app = express();
 app.use(cors());
 
 const getMe = async req => {
-  const token = req.headers["x-token"];
+  const token = req.headers["token"];
+
   if (token) {
     try {
       return await jwt.verify(token, process.env.SECRET);
@@ -64,9 +65,8 @@ const server = new ApolloServer({
 
 server.applyMiddleware({ app, path: "/graphql" });
 
-const eraseDatabaseOnSync = true;
+const eraseDatabaseOnSync = false;
 
-const isProduction = !!process.env.DATABASE_URL;
 const port = process.env.PORT || 8000;
 
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
